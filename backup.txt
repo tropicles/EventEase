@@ -1,0 +1,507 @@
+<?php
+require('C:\xampp\htdocs\Newfolder\inc\links.php');
+require('admin/inc/db_config.php');
+require('admin/inc/essentials.php');
+require('inc\header.php');
+?>
+
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Instamojo Thank You</title>
+<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+<div class="container">
+<div class="row">
+
+	<div class="col-12 my-5 mb-3 px-4">
+		<h2 class="fw-bold">Payment Status</h2>
+	</div>
+	
+	
+
+
+	<?php
+
+
+		require_once('vendor/autoload.php');
+		/*
+
+        $API_KEY = "test_d883b3a8d2bc1adc7a535506713";
+        $AUTH_TOKEN = "test_dc229039d2232a260a2df3f7502";
+		*/
+		$API_KEY = "test_7d6a5f63046bc2869092f26082f";
+        $AUTH_TOKEN = "test_d1f2f1611975543fc3188320975";
+        $URL = "https://test.instamojo.com/api/1.1/";
+        $id = $_GET["id"];
+		$api = new Instamojo\Instamojo($API_KEY, $AUTH_TOKEN,$URL);
+
+		$q1 = "INSERT INTO `booking_order`(`booking_details_id`,`user_id`, `room_id`, `check_in`, `check_out`, `trans_amt`) 
+		VALUES (?,?,?,?,?,?)";
+		$value = [$id,$_SESSION['uId'],$_SESSION['room']['id'],$_SESSION['room']['checkin'],$_SESSION['room']['checkout'],$_SESSION['room']['price']];
+
+		insert($q1,$value,'iiissi');
+
+		$booking_id = mysqli_insert_id($con);
+
+
+		$payid = $_GET["payment_request_id"];
+
+
+		try {
+		$response = $api->paymentRequestStatus($payid);
+
+		$q2 = "UPDATE `booking_order` SET `arrival`= ?,`booking_status`= ?,`order_id`= ?,`trans_id`= ?,
+		`trans_status`= ? WHERE `booking_id`=$booking_id";
+		$val = [1,$response['payments'][0]['status'],$response['payments'][0]['payment_id'],$payid,$response['payments'][0]['status']];
+
+		update($q2,$val,'issss');
+		
+		if($response['payments'][0]['status'] == 'Credit'){
+			echo<<<data
+			   <div class="col-12 px-4">
+			       <p class="fw-bold alert alert-success"><i class="bi bi-check-circle-fill"></i>Payment Done!
+			        <br><br>
+					<a href='bookings.php'>Go to Bookings</a>
+					</p>
+				</div>
+			data;
+		}
+
+		else{
+			echo<<<data
+			   <div class="col-12 px-4">
+			       <p class="fw-bold alert alert-success"><i class="bi bi-exclamation-triangle-fill"></i>Payment Failed
+			        <br><br>
+					<a href='bookings.php'>Go to Bookings</a>
+					</p>
+				</div>
+			data;
+		}
+
+		}
+		catch (Exception $e) {
+		print('Error: ' . $e->getMessage());
+		}
+	?>
+	
+	
+	
+	<br>
+	
+	</div>
+	<br><br><br>
+	
+</div>
+</div>
+<br><br><br>
+<br><br><br>
+<br><br><br>
+	<?php require('inc\footer.php')?>  
+
+
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+<script>
+    var swiper = new Swiper(".swiper-container", {
+      spaceBetween: 30,
+      centeredSlides: true,
+      autoplay: {
+        delay: 2500,
+        disableOnInteraction: false,
+      },
+      
+      
+    });
+  </script>
+</body>
+</html>
+
+
+
+
+@2 backup:
+
+ if(isset($_GET['fetch_events'])){
+    
+    $chk_avail = json_decode($_GET['chk_avail'],true);
+    if($chk_avail['checkin']!='' && $chk_avail['checkout']!=''){
+
+        $today_date = new DateTime(date("Y-m-d"));
+        $checkin_date = new DateTime($chk_avail['checkin']);
+        $checkout_date = new DateTime($chk_avail['checkout']);
+    
+        if($checkin_date == $checkout_date)
+        {
+        echo"<h3 class='tex-center text-danger'>Invalid Dates</h3>";
+           exit;
+            
+        }
+    
+        else if($checkout_date < $checkin_date)
+        {
+        echo"<h3 class='tex-center text-danger'>Invalid Dates</h3>";
+           exit;
+        }
+
+         /*
+        else if($checkin_date < $today_date)
+        {
+        echo"<h3 class='text-center text-danger'>Invalid Dates</h3>";
+           exit;
+        }
+           */
+      
+    }
+
+     
+    $count_events = 0;
+    $output ="";
+    $status = 1;  // Example status
+        $removed = 0;
+       
+        
+        $room_res = fetchFilteredBookings($con, $status, $removed);
+       
+        while($room_data = mysqli_fetch_assoc($room_res))
+        {
+        if($chk_avail['checkin']!='' && $chk_avail['checkout']!=''){
+
+            $tb_query = "SELECT COUNT(*) AS `total` FROM `booking_event` WHERE booking_id=? AND check_out > ? AND check_in <= ?";
+            $values = [$room_data['booking_id'],$chk_avail['checkin'],$chk_avail['checkout']];
+   
+           $tb_fetch = mysqli_fetch_assoc(select($tb_query,$values,'iss'));
+   
+           if ($tb_fetch['total'] > 0) {
+   
+            continue;
+               
+           }
+
+
+        }
+            
+
+          $desc = mysqli_query($con,"SELECT `event_desc` FROM `booking_event` WHERE `booking_id`=$room_data[booking_id]");
+          $desc_data = "";
+          $venue = mysqli_query($con, "SELECT r.name FROM `rooms` r INNER JOIN `booking_event` b ON b.room_id = r.id WHERE b.booking_id = '$room_data[booking_id]' ");
+          $ven_data = "";
+
+          $booking_id = $room_data['booking_id']; // Ensure this is set correctly
+            $startd = mysqli_query($con, "SELECT `check_in` FROM `booking_event` WHERE `booking_id` = $booking_id");
+
+            $start_data = "";
+
+            $endd = mysqli_query($con, "SELECT `check_out` FROM `booking_event` WHERE `booking_id` = $booking_id");
+
+            $end_data = "";
+
+            // Check if the query was successful
+            if ($startd) {
+                while ($fstartd = mysqli_fetch_assoc($startd)) {
+                    // Extract the check_in date
+                    $check_in_date = $fstartd['check_in'];
+                    
+                    // Create a DateTime object
+                    $datetime = new DateTime($check_in_date);
+                    
+                    // Format the date
+                    $formatted_date = $datetime->format('l, F j, Y');
+                    
+                    // Append the formatted date to the badge HTML
+                    $start_data .= "<span class='badge rounded-pill bg-light text-dark text-wrap'>
+                                        $formatted_date
+                                    </span>";
+                }
+            }
+
+            if ($endd) {
+              while ($fendd = mysqli_fetch_assoc($endd)) {
+                  // Extract the check_in date
+                  $check_out_date = $fendd['check_out'];
+                  
+                  // Create a DateTime object
+                  $datetime_end = new DateTime($check_out_date);
+                  
+                  // Format the date
+                  $formatted_date_end = $datetime_end->format('l, F j, Y');
+                  
+                  // Append the formatted date to the badge HTML
+                  $end_data .= "<span class='badge rounded-pill bg-light text-dark text-wrap'>
+                                      $formatted_date_end
+                                  </span>";
+              }
+          }
+
+            $event_price = mysqli_query($con,"SELECT `price` FROM `booking_event` WHERE `booking_id`=$room_data[booking_id]");
+            $price_data = "";
+
+            while($fprice = mysqli_fetch_assoc($event_price))
+          {
+               $price_data .= "<span class='badge rounded-pill bg-light text-dark text-wrap'>
+                                     $fprice[price]
+                                  </span>";
+              
+                   
+          }
+
+
+
+          while($fdesc = mysqli_fetch_assoc($desc))
+          {
+               $desc_data .= "<span class='badge rounded-pill bg-light text-dark text-wrap'>
+                                     $fdesc[event_desc]
+                                  </span>";
+              
+                   
+          }
+          while($fven = mysqli_fetch_assoc($venue))
+          {
+               $ven_data .= "<span class='badge rounded-pill bg-light text-dark text-wrap'>
+                                     $fven[name]
+                                  </span>";
+              
+                   
+          }
+          $room_thumb = EVENT_IMG_PATH."thumbnail.jpg";
+          $thumb_q = mysqli_query($con,"SELECT `event_image` FROM `booking_event` WHERE `booking_id`=$room_data[booking_id]");
+          if(mysqli_num_rows($thumb_q)>0)
+          {
+              $thumb_res = mysqli_fetch_assoc($thumb_q);
+              $room_thumb = EVENT_IMG_PATH.$thumb_res['event_image'];
+          }
+          $book_btn = "";
+          $login = 0;
+          if(isset($_SESSION['login']) && $_SESSION['login']==true)
+          {
+           $login = 1;
+          }
+          $book_btn = "<button onclick='checkLogin($login,$room_data[booking_id])' class='btn btn-sm w-100 text-white custom-bg shadow-none mb-2'>Book Now</button>";
+
+          $output.=" 
+                 <div class='col-lg-4 col-md-6 my-3'>
+                        <div class='card border-0 shadow' style='width: 350px; margin: auto;'>
+                            <img src='$room_thumb' class='card-img-top' alt='...'>
+                            <div class='card-body'>
+                                <h5>$room_data[event_name]</h5>
+                                <p>
+                                    $desc_data
+                                </p>
+                                <h5>Venue</h5>
+                                <p>
+                                    $ven_data
+                                </p>
+                                <h5>Date</h5>
+                                <p>
+                                    $start_data  
+                                </p>
+                                
+                                <div class='mb-3 my-3'>To</div>
+                                  <p>
+                                  
+                                  $end_data
+                                  </p>
+                                <h5>Price</h5>
+                                <p>
+                                    ₹$price_data
+                                </p>
+                                
+                                $book_btn
+                            </div>
+                        </div>
+                    </div>
+                  ";
+                
+             $count_events++;
+
+        }
+        if($count_events>0){
+            echo $output;
+        }
+        else{
+            echo"<h3 class='text-center text-danger'>No Events to show</h3>";
+        }
+ }
+
+
+
+
+ @3
+ <?php
+ require('../admin/inc/db_config.php');
+ require('../admin/inc/essentials.php');
+
+ date_default_timezone_set("Asia/Kolkata");
+
+ session_start();
+
+ function fetchFilteredBookings($con, $status, $removed, $checkin = '', $checkout = '') {
+    $sql = "SELECT 
+                b.`booking_id`, 
+                b.`user_id`, 
+                b.`room_id`, 
+                b.`event_name`, 
+                b.`event_desc`, 
+                b.`event_image`, 
+                b.`check_in`, 
+                b.`check_out`, 
+                b.`datentime`, 
+                r.`status`, 
+                r.`removed`
+            FROM 
+                `booking_event` b
+            INNER JOIN 
+                `rooms` r 
+            ON 
+                b.`room_id` = r.`id`
+            WHERE 
+                r.`status` = ? 
+                AND r.`removed` = ? ";
+
+    $values = [$status, $removed];
+    $datatypes = 'ii';
+
+    // Add date filtering if dates are provided
+    if ($checkin && $checkout) {
+        $sql .= " AND (
+            (b.`check_in` <= ? AND b.`check_out` >= ?) 
+            OR 
+            (b.`check_in` >= ? AND b.`check_in` < ?) 
+            OR 
+            (b.`check_out` > ? AND b.`check_out` <= ?)
+        )";
+        array_push($values, $checkout, $checkin, $checkin, $checkout, $checkin, $checkout);
+        $datatypes .= 'ssssss';
+    }
+
+    // Prepare and execute the query
+    $stmt = $con->prepare($sql);
+    $stmt->bind_param($datatypes, ...$values);
+    $stmt->execute();
+    return $stmt->get_result();
+}
+
+// Check if 'fetch_events' is set
+if (isset($_GET['fetch_events'])) {
+    
+    // Decode the 'chk_avail' JSON parameter
+    $chk_avail = json_decode($_GET['chk_avail'], true);
+
+    // Fetch dates from the decoded object
+    $checkin = isset($chk_avail['checkin']) ? $chk_avail['checkin'] : '';
+    $checkout = isset($chk_avail['checkout']) ? $chk_avail['checkout'] : '';
+
+    // Default values for status and removed
+    $status = 1;  // Example status
+    $removed = 0; // Example removed
+
+    // Fetch filtered bookings
+    $room_res = fetchFilteredBookings($con, $status, $removed, $checkin, $checkout);
+
+    $count_events = 0;
+    $output = "";
+
+    while ($room_data = mysqli_fetch_assoc($room_res)) {
+        // Prepare queries to fetch event details
+        $desc_query = "SELECT `event_desc` FROM `booking_event` WHERE `booking_id` = ?";
+        $stmt_desc = $con->prepare($desc_query);
+        $stmt_desc->bind_param('i', $room_data['booking_id']);
+        $stmt_desc->execute();
+        $desc_result = $stmt_desc->get_result();
+        $desc_data = "";
+        while ($fdesc = $desc_result->fetch_assoc()) {
+            $desc_data .= "<span class='badge rounded-pill bg-light text-dark text-wrap'>{$fdesc['event_desc']}</span>";
+        }
+
+        $venue_query = "SELECT r.name FROM `rooms` r INNER JOIN `booking_event` b ON b.room_id = r.id WHERE b.booking_id = ?";
+        $stmt_venue = $con->prepare($venue_query);
+        $stmt_venue->bind_param('i', $room_data['booking_id']);
+        $stmt_venue->execute();
+        $venue_result = $stmt_venue->get_result();
+        $ven_data = "";
+        while ($fven = $venue_result->fetch_assoc()) {
+            $ven_data .= "<span class='badge rounded-pill bg-light text-dark text-wrap'>{$fven['name']}</span>";
+        }
+
+        $startd_query = "SELECT `check_in` FROM `booking_event` WHERE `booking_id` = ?";
+        $stmt_startd = $con->prepare($startd_query);
+        $stmt_startd->bind_param('i', $room_data['booking_id']);
+        $stmt_startd->execute();
+        $startd_result = $stmt_startd->get_result();
+        $start_data = "";
+        while ($fstartd = $startd_result->fetch_assoc()) {
+            $check_in_date = new DateTime($fstartd['check_in']);
+            $formatted_date = $check_in_date->format('l, F j, Y');
+            $start_data .= "<span class='badge rounded-pill bg-light text-dark text-wrap'>$formatted_date</span>";
+        }
+
+        $endd_query = "SELECT `check_out` FROM `booking_event` WHERE `booking_id` = ?";
+        $stmt_endd = $con->prepare($endd_query);
+        $stmt_endd->bind_param('i', $room_data['booking_id']);
+        $stmt_endd->execute();
+        $endd_result = $stmt_endd->get_result();
+        $end_data = "";
+        while ($fendd = $endd_result->fetch_assoc()) {
+            $check_out_date = new DateTime($fendd['check_out']);
+            $formatted_date_end = $check_out_date->format('l, F j, Y');
+            $end_data .= "<span class='badge rounded-pill bg-light text-dark text-wrap'>$formatted_date_end</span>";
+        }
+
+        $price_query = "SELECT `price` FROM `booking_event` WHERE `booking_id` = ?";
+        $stmt_price = $con->prepare($price_query);
+        $stmt_price->bind_param('i', $room_data['booking_id']);
+        $stmt_price->execute();
+        $price_result = $stmt_price->get_result();
+        $price_data = "";
+        while ($fprice = $price_result->fetch_assoc()) {
+            $price_data .= "<span class='badge rounded-pill bg-light text-dark text-wrap'>₹{$fprice['price']}</span>";
+        }
+
+        $room_thumb = EVENT_IMG_PATH . "thumbnail.jpg";
+        $thumb_query = "SELECT `event_image` FROM `booking_event` WHERE `booking_id` = ?";
+        $stmt_thumb = $con->prepare($thumb_query);
+        $stmt_thumb->bind_param('i', $room_data['booking_id']);
+        $stmt_thumb->execute();
+        $thumb_result = $stmt_thumb->get_result();
+        if ($thumb_result->num_rows > 0) {
+            $thumb_res = $thumb_result->fetch_assoc();
+            $room_thumb = EVENT_IMG_PATH . $thumb_res['event_image'];
+        }
+
+        $login = isset($_SESSION['login']) && $_SESSION['login'] ? 1 : 0;
+        $book_btn = "<button onclick='checkLogin($login, {$room_data['booking_id']})' class='btn btn-sm w-100 text-white custom-bg shadow-none mb-2'>Book Now</button>";
+
+        $output .= "
+            <div class='col-lg-4 col-md-6 my-3'>
+                <div class='card border-0 shadow' style='width: 350px; margin: auto;'>
+                    <img src='$room_thumb' class='card-img-top' alt='Event Image'>
+                    <div class='card-body'>
+                        <h5>{$room_data['event_name']}</h5>
+                        <p>$desc_data</p>
+                        <h5>Venue</h5>
+                        <p>$ven_data</p>
+                        <h5>Date</h5>
+                        <p>$start_data</p>
+                        <div class='mb-3 my-3'>To</div>
+                        <p>$end_data</p>
+                        <h5>Price</h5>
+                        <p>$price_data</p>
+                        $book_btn
+                    </div>
+                </div>
+            </div>
+        ";
+
+        $count_events++;
+    }
+
+    if ($count_events > 0) {
+        echo $output;
+    } else {
+        echo "<h3 class='text-center text-danger'>No Events to show</h3>";
+    }
+}
+ 
+
+?>

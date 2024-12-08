@@ -1,0 +1,6 @@
+{
+    "require": {
+        "instamojo/instamojo-php": "^0.4.0",
+        "mpdf/mpdf": "^6.1"
+    }
+}

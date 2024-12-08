@@ -1,0 +1,73 @@
+:root{
+    --teal: #2ec1ac;
+    --teal_hover:#279e8c;
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.poppins-regular {
+  font-family: "Poppins", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.poppins-medium {
+  font-family: "Poppins", sans-serif;
+  font-weight: 500;
+  font-style: normal;
+}
+
+.poppins-bold {
+  font-family: "Poppins", sans-serif;
+  font-weight: 700;
+  font-style: normal;
+}
+
+
+.swiper-slide
+{
+width: 1280;
+height: 720;
+position: relative;
+}
+
+
+.custom-bg
+{
+  background-color: var(--teal);
+  border:1px solid var(--teal) ;
+}
+.custom-bg:hover
+{
+  background-color: var(--teal_hover);
+  border-color: var(--teal_hover);
+}
+
+.custom-alert {
+  position: fixed; /* Ensures it's positioned relative to the viewport */
+  top: 25px; /* Adjusts the distance from the top of the viewport */
+  right: 25px; /* Adjusts the distance from the right of the viewport */
+  z-index: 2000; /* Ensures it appears above other elements */
+  /* Additional styling as needed */
+}
+
+.badge {
+  display: inline-block;
+  padding: 10px;
+}
+
+.details-label {
+  text-align: left; /* Align "Details" to the left */
+}
+
+.description-text {
+  margin-top: 5px; /* Add some space between "Details" and description */
+  text-align: left; /* Align the description text to the left */
+}
+
+
+
+
